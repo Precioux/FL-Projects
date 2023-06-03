@@ -1,61 +1,48 @@
 class DFA:
-    def __init__(self, states, alphabet, start_state, accept_states, transitions):
+    def __init__(self, states, alphabet, transitions, start_state, accept_states):
         self.states = states
         self.alphabet = alphabet
+        self.transitions = transitions
         self.start_state = start_state
         self.accept_states = accept_states
-        self.transitions = transitions
 
-    def is_accepted(self, input_string):
+    def accepts(self, input_string):
         current_state = self.start_state
-
         for char in input_string:
             if char not in self.alphabet:
                 return False
-
             current_state = self.transitions.get((current_state, char))
-
             if current_state is None:
                 return False
-
         return current_state in self.accept_states
 
 
-def load_dfa_from_file(file_path):
-    with open(file_path, 'r') as file:
-        dfa_data = file.read()
+def parse_dfa_input(filename):
+    with open(filename, 'r') as file:
+        lines = file.readlines()
 
-    dfa = parse_dfa_data(dfa_data)
-    return dfa
-
-
-def parse_dfa_data(dfa_data):
-    dfa_lines = dfa_data.split('\n')
-
-    states = dfa_lines[0].split(': ')[1].split(', ')
-    alphabet = dfa_lines[1].split(': ')[1].split(', ')
-    start_state = dfa_lines[2].split(': ')[1]
-    accept_states = dfa_lines[3].split(': ')[1].split(', ')
+    alphabet = lines[0].split()
+    states = lines[1].split()
+    start_state = lines[2].strip()
+    accept_states = lines[3].split()
 
     transitions = {}
-    for line in dfa_lines[4:]:
-        if line:
-            source, symbol, destination = line.split(', ')
-            transitions[(source, symbol)] = destination
+    for line in lines[4:]:
+        parts = line.split()
+        transitions[(parts[0], parts[1])] = parts[2]
 
-    dfa = DFA(states, alphabet, start_state, accept_states, transitions)
-    return dfa
+    return DFA(states, alphabet, transitions, start_state, accept_states)
 
 
 def main():
-    dfa_file_path = 'DFA_Input_1.txt'
-    input_string = input('Enter a string: ')
+    dfa_filename = 'DFA_Input_1.txt'
+    dfa = parse_dfa_input(dfa_filename)
 
-    dfa = load_dfa_from_file(dfa_file_path)
-    if dfa.is_accepted(input_string):
+    input_string = input('Enter a string: ')
+    if dfa.accepts(input_string):
         print('Accepted')
     else:
-        print('Not Accepted')
+        print('Not accepted')
 
 
 if __name__ == '__main__':
