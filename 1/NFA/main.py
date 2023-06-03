@@ -19,12 +19,10 @@ class NFA:
                     if epsilon_state not in closure:
                         closure.add(epsilon_state)
                         stack.append(epsilon_state)
-
         return closure
 
     def move(self, states, symbol):
         move_states = set()
-
         for state in states:
             symbol_transitions = self.transitions.get((state, symbol))
             if symbol_transitions:
@@ -42,6 +40,7 @@ class DFA:
         self.accept_states = accept_states
 
     def to_dfa(self, nfa):
+        print('to dfa started...')
         dfa_states = set()
         dfa_start_state = nfa.epsilon_closure({nfa.start_state})
         dfa_states.add(tuple(sorted(dfa_start_state)))
@@ -52,26 +51,33 @@ class DFA:
 
         while stack:
             current_states = stack.pop()
+            new_states_added = False  # Set initial value to False in each iteration
+
             for symbol in nfa.alphabet:
                 move_states = nfa.move(current_states, symbol)
                 epsilon_closure = nfa.epsilon_closure(move_states)
 
-                if epsilon_closure not in dfa_states:
+                if epsilon_closure and epsilon_closure not in dfa_states:
                     dfa_states.add(tuple(sorted(epsilon_closure)))
                     stack.append(epsilon_closure)
+                    new_states_added = True  # A new state has been added to dfa_states
 
                 dfa_transitions[(tuple(sorted(current_states)), symbol)] = tuple(sorted(epsilon_closure))
+
+            if new_states_added:
+                break
 
         for dfa_state in dfa_states:
             if any(state in nfa.accept_states for state in dfa_state):
                 dfa_accept_states.append(dfa_state)
 
         dfa_states = [state for state in dfa_states]
-
+        print('to dfa finished')
         return DFA(dfa_states, nfa.alphabet, dfa_transitions, tuple(sorted(dfa_start_state)), dfa_accept_states)
 
 
 def parse_nfa_input(filename):
+    print('parsing nfa started..')
     with open(filename, 'r') as file:
         lines = file.readlines()
 
@@ -88,17 +94,18 @@ def parse_nfa_input(filename):
         next_states = parts[2:]
         transitions.setdefault((current_state, symbol), []).extend(next_states)
 
+    print('parsing nfa finished')
     return NFA(states, alphabet, transitions, start_state, accept_states)
 
 
 def write_dfa_output(dfa, filename):
     with open(filename, 'w') as file:
         file.write(' '.join(dfa.alphabet) + '\n')
-        file.write(' '.join(dfa.states) + '\n')
-        file.write(dfa.start_state + '\n')
-        file.write(' '.join(dfa.accept_states) + '\n')
+        file.write(' '.join(str(state) for state in dfa.states) + '\n')
+        file.write(str(dfa.start_state) + '\n')
+        file.write(' '.join(str(state) for state in dfa.accept_states) + '\n')
         for (current_state, symbol), next_state in dfa.transitions.items():
-            file.write(current_state + ' ' + symbol + ' ' + next_state + '\n')
+            file.write(str(current_state) + ' ' + str(symbol) + ' ' + str(next_state) + '\n')
 
 
 def main():
@@ -110,7 +117,9 @@ def main():
 
     dfa = dfa.to_dfa(nfa)
 
+    print('writing..')
     write_dfa_output(dfa, dfa_filename)
+    print('done!')
 
 
 if __name__ == '__main__':
