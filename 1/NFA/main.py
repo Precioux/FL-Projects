@@ -1,5 +1,6 @@
 class NFA:
     def __init__(self, states, alphabet, transitions, start_state, accept_states):
+        # Initialize the NFA with its states, alphabet, transitions, start state, and accept states
         self.states = states
         self.alphabet = alphabet
         self.transitions = transitions
@@ -7,6 +8,7 @@ class NFA:
         self.accept_states = accept_states
 
     def lambda_closure(self, states):
+        # Compute the lambda closure of a set of states in the NFA
         closure = set(states)
         stack = list(states)
 
@@ -22,6 +24,7 @@ class NFA:
         return closure
 
     def move(self, states, symbol):
+        # Compute the set of states reachable from a set of states with a given symbol
         move_states = set()
         for state in states:
             symbol_transitions = self.transitions.get((state, symbol))
@@ -31,6 +34,7 @@ class NFA:
         return move_states
 
     def convert_lambda_nfa_to_nfa(self):
+        # Convert the lambda-NFA to an NFA by computing epsilon closures and transitions
         new_transitions = {}
         new_accept_states = set()
 
@@ -49,6 +53,7 @@ class NFA:
 
 class DFA:
     def __init__(self, states, alphabet, transitions, start_state, accept_states):
+        # Initialize the DFA with its states, alphabet, transitions, start state, and accept states
         self.states = states
         self.alphabet = alphabet
         self.transitions = transitions
@@ -56,6 +61,7 @@ class DFA:
         self.accept_states = accept_states
 
     def to_dfa(self, nfa):
+        # Convert an NFA to a DFA by computing epsilon closures and transitions
         dfa_states = set()
         dfa_start_state = frozenset(nfa.lambda_closure({nfa.start_state}))
         dfa_states.add(dfa_start_state)
@@ -92,6 +98,7 @@ class DFA:
 
 
 def parse_nfa_input(filename):
+    # Parse the input file to create an NFA object
     with open(filename, 'r') as file:
         lines = file.readlines()
 
@@ -116,6 +123,7 @@ def parse_nfa_input(filename):
 
 
 def write_dfa_output(dfa, filename):
+    # Write the DFA object to the output file
     with open(filename, 'w') as file:
         file.write(' '.join(dfa.alphabet) + '\n')
         file.write(' '.join(str(sorted(state)) for state in dfa.states) + '\n')
@@ -127,18 +135,24 @@ def write_dfa_output(dfa, filename):
             file.write(f'[ {current_states_str} ] {str(symbol)}  [ {next_state_str} ]\n')
 
 
-
 def main():
+    # Main program execution
     nfa_filename = 'NFA_Input_2.txt'
     dfa_filename = 'DFA_Output_2.txt'
 
+    # Parse the NFA input file
     nfa = parse_nfa_input(nfa_filename)
+
+    # Convert the lambda-NFA to an NFA
     nfa = nfa.convert_lambda_nfa_to_nfa()
 
+    # Create an empty DFA object
     dfa = DFA([], nfa.alphabet, {}, '', [])
 
+    # Convert the NFA to a DFA
     dfa = dfa.to_dfa(nfa)
 
+    # Write the DFA output to a file
     write_dfa_output(dfa, dfa_filename)
 
 

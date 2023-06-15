@@ -1,28 +1,30 @@
+# Define non-symbols that should not be considered as operators
 non_symbols = ['+', '*', '.', '(', ')']
+
+# Initialize an empty NFA dictionary
 nfa = {}
 
-
+# Define character types using constants
 class charType:
     SYMBOL = 1
     CONCAT = 2
     UNION = 3
     KLEENE = 4
 
-
+# Define the NFA state class
 class NFAState:
     def __init__(self):
         self.next_state = {}
 
-
+# Define the ExpressionTree class
 class ExpressionTree:
-
     def __init__(self, charType, value=None):
         self.charType = charType
         self.value = value
         self.left = None
         self.right = None
 
-
+# Function to construct the expression tree from a regular expression
 def make_exp_tree(regexp):
     stack = []
     for c in regexp:
@@ -46,14 +48,13 @@ def make_exp_tree(regexp):
             stack.append(ExpressionTree(charType.SYMBOL, c))
     return stack[0]
 
-
+# Function to compare operator precedence
 def compPrecedence(a, b):
     p = ["+", ".", "*"]
     return p.index(a) > p.index(b)
 
-
+# Function to compute the regex to NFA conversion
 def compute_regex(exp_t):
-    # returns E-NFA
     if exp_t.charType == charType.CONCAT:
         return do_concat(exp_t)
     elif exp_t.charType == charType.UNION:
@@ -63,7 +64,7 @@ def compute_regex(exp_t):
     else:
         return eval_symbol(exp_t)
 
-
+# Function to evaluate a symbol in the expression tree
 def eval_symbol(exp_t):
     start = NFAState()
     end = NFAState()
@@ -71,7 +72,7 @@ def eval_symbol(exp_t):
     start.next_state[exp_t.value] = [end]
     return start, end
 
-
+# Function to handle the concatenation operation
 def do_concat(exp_t):
     left_nfa = compute_regex(exp_t.left)
     right_nfa = compute_regex(exp_t.right)
@@ -79,7 +80,7 @@ def do_concat(exp_t):
     left_nfa[1].next_state['λ'] = [right_nfa[0]]
     return left_nfa[0], right_nfa[1]
 
-
+# Function to handle the union operation
 def do_union(exp_t):
     start = NFAState()
     end = NFAState()
@@ -93,7 +94,7 @@ def do_union(exp_t):
 
     return start, end
 
-
+# Function to handle the Kleene star operation
 def do_kleene_star(exp_t):
     start = NFAState()
     end = NFAState()
@@ -105,7 +106,7 @@ def do_kleene_star(exp_t):
 
     return start, end
 
-
+# Function to arrange the transitions of the NFA states
 def arrange_transitions(state, states_done, symbol_table):
     global nfa
 
@@ -127,11 +128,11 @@ def arrange_transitions(state, states_done, symbol_table):
         for ns in state.next_state[symbol]:
             arrange_transitions(ns, states_done, symbol_table)
 
-
+# Function to convert state notation to a number
 def notation_to_num(str):
     return int(str[1:])
 
-
+# Function to find the final states of the NFA
 def final_st_dfs():
     global nfa
     for st in nfa["states"]:
@@ -142,7 +143,7 @@ def final_st_dfs():
         if count == 0 and st not in nfa["final_states"]:
             nfa["final_states"].append(st)
 
-
+# Function to arrange the NFA states and transitions
 def arrange_nfa(fa):
     global nfa
     nfa['states'] = []
@@ -159,7 +160,7 @@ def arrange_nfa(fa):
     nfa["start_states"].append("Q1")
     final_st_dfs()
 
-
+# Function to add concatenation operators to the regular expression
 def add_concat(regex):
     global non_symbols
     l = len(regex)
@@ -181,7 +182,7 @@ def add_concat(regex):
     res += regex[l - 1]
     return res
 
-
+# Function to compute the postfix notation of the regular expression
 def compute_postfix(regexp):
     stk = []
     res = ""
@@ -207,18 +208,18 @@ def compute_postfix(regexp):
 
     return res
 
-
+# Function to convert the regular expression to Polish notation
 def polish_regex(regex):
     reg = add_concat(regex)
     regg = compute_postfix(reg)
     return regg
 
-
+# Function to replace certain characters in the input string
 def replace_characters(input_string):
     replaced_string = input_string.replace('*', '').replace('^', '*')
     return replaced_string
 
-
+# Function to write the NFA output to a file
 def write_nfa_output(nfa, filename):
     with open(filename, 'w') as file:
         file.write(' '.join(nfa['letters']) + '\n')
@@ -231,11 +232,12 @@ def write_nfa_output(nfa, filename):
             qo = n[2]
             file.write(f'{qi} {s.replace("λ", "lambda")} {qo} \n')
 
-
+# Main program execution
 if __name__ == "__main__":
     regex_filename = 'RE_Input_3.txt'
     nfa_filename = 'NFA_Output_3.txt'
 
+    # Read input from file
     with open(regex_filename, 'r') as file:
         lines = file.readlines()
 
@@ -243,8 +245,17 @@ if __name__ == "__main__":
     regex = lines[1].strip()
     reg = replace_characters(regex)
 
+    # Convert regular expression to Polish notation
     pr = polish_regex(reg)
+
+    # Create expression tree from the regular expression
     et = make_exp_tree(pr)
+
+    # Compute the NFA from the expression tree
     fa = compute_regex(et)
+
+    # Arrange the NFA states and transitions
     arrange_nfa(fa)
+
+    # Write the NFA output to a file
     write_nfa_output(nfa, nfa_filename)
