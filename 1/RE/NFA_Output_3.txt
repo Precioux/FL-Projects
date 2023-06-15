@@ -1,0 +1,16 @@
+a b
+Q1 Q2 Q3 Q4 Q5 Q6 Q7 Q8 Q9 Q10
+Q1
+Q9
+Q1 lambda Q2 
+Q1 lambda Q3 
+Q2 lambda Q4 
+Q2 lambda Q5 
+Q4 a Q6 
+Q6 lambda Q7 
+Q7 lambda Q2 
+Q7 lambda Q3 
+Q3 lambda Q8 
+Q8 b Q9 
+Q5 b Q10 
+Q10 lambda Q7 

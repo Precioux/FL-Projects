@@ -1,76 +1,250 @@
-import re
+non_symbols = ['+', '*', '.', '(', ')']
+nfa = {}
 
-class NFA:
-  def __init__(self):
-    self.alphabet = set()
-    self.states = set()
-    self.start_state = None
-    self.final_states = set()
-    self.transitions = {}
 
-  def add_symbol(self, symbol):
-    self.alphabet.add(symbol)
+class charType:
+    SYMBOL = 1
+    CONCAT = 2
+    UNION = 3
+    KLEENE = 4
 
-  def add_state(self, state):
-    self.states.add(state)
 
-  def set_start_state(self, state):
-    self.start_state = state
+class NFAState:
+    def __init__(self):
+        self.next_state = {}
 
-  def add_final_state(self, state):
-    self.final_states.add(state)
 
-  def add_transition(self, source_state, symbol, target_state):
-    if source_state not in self.transitions:
-      self.transitions[source_state] = {}
-    self.transitions[source_state][symbol] = target_state
+class ExpressionTree:
 
-  def accepts(self, string):
-    current_state = self.start_state
-    for symbol in string:
-      if symbol not in self.transitions[current_state]:
-        return False
-      current_state = self.transitions[current_state][symbol]
-    return current_state in self.final_states
+    def __init__(self, charType, value=None):
+        self.charType = charType
+        self.value = value
+        self.left = None
+        self.right = None
 
-def read_dfa(filename):
-  with open(filename, "r") as f:
-    alphabet = f.readline().split()
-    regular_expression = f.readline()
 
-  nfa = NFA()
-  nfa.alphabet = alphabet
+def make_exp_tree(regexp):
+    stack = []
+    for c in regexp:
+        if c == "+":
+            z = ExpressionTree(charType.UNION)
+            z.right = stack.pop()
+            z.left = stack.pop()
+            stack.append(z)
+        elif c == ".":
+            z = ExpressionTree(charType.CONCAT)
+            z.right = stack.pop()
+            z.left = stack.pop()
+            stack.append(z)
+        elif c == "*":
+            z = ExpressionTree(charType.KLEENE)
+            z.left = stack.pop()
+            stack.append(z)
+        elif c == "(" or c == ")":
+            continue
+        else:
+            stack.append(ExpressionTree(charType.SYMBOL, c))
+    return stack[0]
 
-  # Create states
-  for state in range(1, len(regular_expression) + 1):
-    nfa.add_state(state)
 
-  # Create starting state
-  nfa.set_start_state(1)
+def compPrecedence(a, b):
+    p = ["+", ".", "*"]
+    return p.index(a) > p.index(b)
 
-  # Create final states
-  for match in re.finditer(r"(?<=^)\w+", regular_expression):
-    nfa.add_final_state(int(match.group()))
 
-  # Create state transitions
-  for i in range(len(regular_expression) - 1):
-    if regular_expression[i] == regular_expression[i + 1]:
-      nfa.add_transition(i + 1, i + 1, i + 1)
+def compute_regex(exp_t):
+    # returns E-NFA
+    if exp_t.charType == charType.CONCAT:
+        return do_concat(exp_t)
+    elif exp_t.charType == charType.UNION:
+        return do_union(exp_t)
+    elif exp_t.charType == charType.KLEENE:
+        return do_kleene_star(exp_t)
     else:
-      nfa.add_transition(i + 1, i + 2, i + 2)
+        return eval_symbol(exp_t)
 
-  return nfa
 
-def write_nfa(nfa, filename):
-  with open(filename, "w") as f:
-    f.write(" ".join(nfa.alphabet) + "\n")
-    f.write(" ".join(str(state) for state in nfa.states) + "\n")
-    f.write(str(nfa.start_state) + "\n")
-    f.write(" ".join(str(state) for state in nfa.final_states) + "\n")
-    for state in nfa.states:
-      for symbol in nfa.alphabet:
-        f.write(str(state) + " " + symbol + " " + str(nfa.transitions[state][symbol]) + "\n")
+def eval_symbol(exp_t):
+    start = NFAState()
+    end = NFAState()
+
+    start.next_state[exp_t.value] = [end]
+    return start, end
+
+
+def do_concat(exp_t):
+    left_nfa = compute_regex(exp_t.left)
+    right_nfa = compute_regex(exp_t.right)
+
+    left_nfa[1].next_state['λ'] = [right_nfa[0]]
+    return left_nfa[0], right_nfa[1]
+
+
+def do_union(exp_t):
+    start = NFAState()
+    end = NFAState()
+
+    first_nfa = compute_regex(exp_t.left)
+    second_nfa = compute_regex(exp_t.right)
+
+    start.next_state['λ'] = [first_nfa[0], second_nfa[0]]
+    first_nfa[1].next_state['λ'] = [end]
+    second_nfa[1].next_state['λ'] = [end]
+
+    return start, end
+
+
+def do_kleene_star(exp_t):
+    start = NFAState()
+    end = NFAState()
+
+    starred_nfa = compute_regex(exp_t.left)
+
+    start.next_state['λ'] = [starred_nfa[0], end]
+    starred_nfa[1].next_state['λ'] = [starred_nfa[0], end]
+
+    return start, end
+
+
+def arrange_transitions(state, states_done, symbol_table):
+    global nfa
+
+    if state in states_done:
+        return
+
+    states_done.append(state)
+
+    for symbol in list(state.next_state):
+        if symbol not in nfa['letters'] and symbol != 'λ':
+            nfa['letters'].append(symbol)
+        for ns in state.next_state[symbol]:
+            if ns not in symbol_table:
+                symbol_table[ns] = sorted(symbol_table.values())[-1] + 1
+                q_state = "Q" + str(symbol_table[ns])
+                nfa['states'].append(q_state)
+            nfa['transition_function'].append(["Q" + str(symbol_table[state]), symbol, "Q" + str(symbol_table[ns])])
+
+        for ns in state.next_state[symbol]:
+            arrange_transitions(ns, states_done, symbol_table)
+
+
+def notation_to_num(str):
+    return int(str[1:])
+
+
+def final_st_dfs():
+    global nfa
+    for st in nfa["states"]:
+        count = 0
+        for val in nfa['transition_function']:
+            if val[0] == st and val[2] != st:
+                count += 1
+        if count == 0 and st not in nfa["final_states"]:
+            nfa["final_states"].append(st)
+
+
+def arrange_nfa(fa):
+    global nfa
+    nfa['states'] = []
+    nfa['letters'] = []
+    nfa['transition_function'] = []
+    nfa['start_states'] = []
+    nfa['final_states'] = []
+    q_1 = "Q" + str(1)
+    nfa['states'].append(q_1)
+    arrange_transitions(fa[0], [], {fa[0]: 1})
+
+    st_num = [notation_to_num(i) for i in nfa['states']]
+
+    nfa["start_states"].append("Q1")
+    final_st_dfs()
+
+
+def add_concat(regex):
+    global non_symbols
+    l = len(regex)
+    res = []
+    for i in range(l - 1):
+        res.append(regex[i])
+        if regex[i] not in non_symbols:
+            if regex[i + 1] not in non_symbols or regex[i + 1] == '(':
+                res += '.'
+        if regex[i] == ')' and regex[i + 1] == '(':
+            res += '.'
+        if regex[i] == '*' and regex[i + 1] == '(':
+            res += '.'
+        if regex[i] == '*' and regex[i + 1] not in non_symbols:
+            res += '.'
+        if regex[i] == ')' and regex[i + 1] not in non_symbols:
+            res += '.'
+
+    res += regex[l - 1]
+    return res
+
+
+def compute_postfix(regexp):
+    stk = []
+    res = ""
+
+    for c in regexp:
+        if c not in non_symbols or c == "*":
+            res += c
+        elif c == ")":
+            while len(stk) > 0 and stk[-1] != "(":
+                res += stk.pop()
+            stk.pop()
+        elif c == "(":
+            stk.append(c)
+        elif len(stk) == 0 or stk[-1] == "(" or compPrecedence(c, stk[-1]):
+            stk.append(c)
+        else:
+            while len(stk) > 0 and stk[-1] != "(" and not compPrecedence(c, stk[-1]):
+                res += stk.pop()
+            stk.append(c)
+
+    while len(stk) > 0:
+        res += stk.pop()
+
+    return res
+
+
+def polish_regex(regex):
+    reg = add_concat(regex)
+    regg = compute_postfix(reg)
+    return regg
+
+
+def replace_characters(input_string):
+    replaced_string = input_string.replace('*', '').replace('^', '*')
+    return replaced_string
+
+
+def write_nfa_output(nfa, filename):
+    with open(filename, 'w') as file:
+        file.write(' '.join(nfa['letters']) + '\n')
+        file.write(' '.join(str(state) for state in nfa['states']) + '\n')
+        file.write(' '.join(nfa['start_states']) + '\n')
+        file.write(' '.join(str(state) for state in nfa['final_states']) + '\n')
+        for n in nfa['transition_function']:
+            qi = n[0]
+            s = n[1]
+            qo = n[2]
+            file.write(f'{qi} {s.replace("λ", "lambda")} {qo} \n')
+
 
 if __name__ == "__main__":
-  nfa = read_dfa("RE_Input_3.txt")
-  write_nfa(nfa, "NFA_Output3.txt")
+    regex_filename = 'RE_Input_3.txt'
+    nfa_filename = 'NFA_Output_3.txt'
+
+    with open(regex_filename, 'r') as file:
+        lines = file.readlines()
+
+    alphabet = lines[0].split()
+    regex = lines[1].strip()
+    reg = replace_characters(regex)
+
+    pr = polish_regex(reg)
+    et = make_exp_tree(pr)
+    fa = compute_regex(et)
+    arrange_nfa(fa)
+    write_nfa_output(nfa, nfa_filename)
