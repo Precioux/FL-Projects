@@ -4,6 +4,7 @@ tapes = {}
 
 class TuringMachine_1:
     def __init__(self, input_number):
+        print('FIRST MACHINE STARTED!')
         # Convert the input number to unary representation
         unary_representation = "1" * input_number
         print(f'Input: {unary_representation}')
@@ -30,7 +31,8 @@ class TuringMachine_1:
 
     def step(self):
         current_symbol = self.tape[self.current_position]
-        print(f'Step : sym {current_symbol} state {self.current_state}')
+
+        print(f'State: {self.current_state}, Sym: {current_symbol} ')
         if (self.current_state, current_symbol) in self.transitions:
             next_state, write_symbol, direction = self.transitions[(self.current_state, current_symbol)]
             self.tape[self.current_position] = write_symbol  # Write the new symbol(s) on the tape
@@ -58,6 +60,7 @@ class TuringMachine_1:
 
 class TuringMachine_2:
     def __init__(self):
+        print('SECOND MACHINE STARTED!')
         # getting input from first machine
         unary_representation = tapes['first']
 
@@ -83,7 +86,7 @@ class TuringMachine_2:
 
     def step(self):
         current_symbol = self.tape[self.current_position]
-        print(f'Step : sym {current_symbol} state {self.current_state}')
+        print(f'State: {self.current_state}, Sym: {current_symbol} ')
         if (self.current_state, current_symbol) in self.transitions:
             next_state, write_symbol, direction = self.transitions[(self.current_state, current_symbol)]
             self.tape[self.current_position] = write_symbol  # Write the new symbol(s) on the tape
@@ -111,11 +114,11 @@ class TuringMachine_2:
 
 class TuringMachine_3:
     def __init__(self):
+        print('THIRD MACHINE STARTED!')
         self.stack = []
         # Initialize the tape
         unary_representation = tapes['second']
         self.tape = [BLANK] + list(unary_representation) + ['&', '1'] + [BLANK]
-        print('TM3')
         print(f"Tape: {self.tape}")
 
         # Define the states
@@ -147,7 +150,6 @@ class TuringMachine_3:
         self.current_position = 0
 
     def step(self):
-        print(f'Current position : {self.current_position}')
         current_symbol = self.tape[self.current_position]
         print(f'State: {self.current_state}, Sym: {current_symbol} ')
 
@@ -156,20 +158,15 @@ class TuringMachine_3:
             write_symbol = ''
             direction = ''
             if self.current_state == 'find' and current_symbol == '1':
-                print('Adding to stack')
                 self.stack.append(1)
-                print(f'Stack : {self.stack}')
                 next_state, write_symbol, direction = self.transitions[(self.current_state, current_symbol)]
                 self.tape[self.current_position] = write_symbol  # Write the new symbol on the tape
 
             elif self.current_state == 'change' and current_symbol == '1':
-                print('IN CHANGE')
                 if len(self.stack) > 0:
                     for i in range(len(self.stack)):
                         write_symbol += '1'
-                    print(f'write_symbol = {write_symbol}')
                     next_state, w, direction = self.transitions[(self.current_state, current_symbol)]
-                    # self.tape[self.current_position:self.current_position] = list(write_symbol)
                     self.tape[self.current_position] = write_symbol
                 else:
                     next_state = 'halt'
@@ -178,37 +175,22 @@ class TuringMachine_3:
 
 
             elif self.current_state == 'change' and current_symbol == BLANK:
-                print('IN END')
                 index = 0
                 tape_copy = self.tape.copy()
                 for i in tape_copy:
-                    print(i)
                     if len(i) == 1:
-                        # print('ok')
                         index += 1
                     else:
-                        # print(f'String found : {i}')
-                        # print(f'index : {index}')
                         l = []
                         for o in i:
                             l.append('1')
                         head = self.tape[:index]
                         tail = self.tape[index + 1:]
-                        print(f'head : {head}')
-                        print(f'tail : {tail}')
                         self.tape.clear()
                         self.tape = head + l + tail
                         index += len(i)
-                        # print(f'tape size after : {len(self.tape)}')
-                        # print(f'new index : {index}')
-                        print(f'tape : {self.tape}')
-                        print(f'i : {i}')
 
-                # print(f'new : {self.tape}')
                 self.stack.clear()
-                # print(f'stack : {self.stack}')
-                print(len(self.tape))
-                print(self.tape[10])
                 self.current_position = len(self.tape) - 1
                 next_state, w, direction = self.transitions[(self.current_state, current_symbol)]
             else:
@@ -216,7 +198,6 @@ class TuringMachine_3:
                 self.tape[self.current_position] = write_symbol  # Write the new symbol on the tape
 
             print(f'changed tape : {self.tape}')
-            print(f'Position : {self.current_position}')
 
             # Move the tape head based on the direction
             if direction == "R":
@@ -242,17 +223,33 @@ class TuringMachine_3:
         return result
 
 
-# Example usage
-input_number = 1
-# 3 * n
-tm1 = TuringMachine_1(input_number)
-result1 = tm1.run()
-print("Result 3 * n:", result1)
-# 3 * n + 1
-tm2 = TuringMachine_2()
-result2 = tm2.run()
-print(f'Result 3 * n + 1 : {result2}')
-# (3n+1)!
-tm3 = TuringMachine_3()
-result3 = tm3.run()
-print(f'Result final : {result3}')
+def run_machine(input_number):
+    global tapes
+    tapes.clear()
+    # 3 * n
+    tm1 = TuringMachine_1(input_number)
+    result1 = tm1.run()
+    print("Result 3 * n:", result1)
+    print('*********************************************************************************')
+    # 3 * n + 1
+    tm2 = TuringMachine_2()
+    result2 = tm2.run()
+    print(f'Result 3 * n + 1 : {result2}')
+    print('*********************************************************************************')
+    # (3n+1)!
+    tm3 = TuringMachine_3()
+    result3 = tm3.run()
+    print(f'Result final : {result3}')
+    print(f'Cause its hard to count 1s! decimal is {len(result3)}')
+    print('*********************************************************************************')
+
+
+if __name__ == '__main__':
+    flag = True
+    while flag:
+        n = input('Enter number : ')
+        run_machine(int(n))
+        c = input('If you want to continue enter 1 else 0: ')
+        cont = int(c)
+        if cont == 0:
+            flag = False
